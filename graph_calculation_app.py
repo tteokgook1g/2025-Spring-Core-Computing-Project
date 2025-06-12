@@ -95,6 +95,9 @@ def bfs_shortest_path(start_title, target_title, undirected, progress_bar, statu
             progress_bar.progress((i+1)/len(queue))
             status_text.text(f"searching for {distance=}: {i+1}/{len(queue)}")
 
+            if len(result) * (len(queue)-i) > 1e5:
+                break
+
             edges = binary_search_title(path[-1], _edges_df)
 
             for row in edges.itertuples(index=False):
