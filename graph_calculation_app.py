@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 
 
+# 세 개의 데이터 파일을 불러옵니다.
 @st.cache_data
 def load_data():
     edges_df = pd.read_csv('./edges_df.csv.gz')
@@ -18,6 +19,7 @@ def load_data():
 edges_df, edges_undirected_df, s_id_title, s_title_id = load_data()
 
 
+# from_title열에서 이분탐색을 수행합니다. 정렬된 from_title열을 기준으로 target과 일치하는 부분의 시작과 끝을 이분탐색으로 구합니다.
 def find_lower_bound(target, _edges_df):
     left, right = 0, len(_edges_df)
     while left < right:
@@ -60,6 +62,11 @@ def binary_search_title(target, _edges_df):
     return _edges_df.iloc[lower:upper]
 
 
+# 문서 A -> B 최단 경로를 찾는 BFS 알고리즘
+# BFS 알고리즘을 활용하여 나무위키 문서 A에서 문서 B로 링크를 타고 이동하는 최단 경로를 찾습니다.
+# 문서 제목을 이분탐색으로 찾습니다.
+# 최단 거리 경로가 여러 개이면 모두 구합니다.
+# undirected가 True이면 간선이 두 방향 모두 존재하는 경우만을 고려합니다.
 def bfs_shortest_path(start_title, target_title, undirected, progress_bar, status_text):
     """
     Finds the shortest path between two documents using BFS (layer-by-layer).
@@ -120,6 +127,11 @@ def bfs_shortest_path(start_title, target_title, undirected, progress_bar, statu
     return None  # No path found
 
 
+# 문서 A -> B 최단 경로를 찾는 다익스트라 알고리즘
+# Dijkstra 알고리즘을 활용하여 나무위키 문서 A에서 문서 B로 링크를 타고 이동하는 최단 경로를 찾습니다.
+# 문서 제목을 이분탐색으로 찾습니다.
+# 가중치는 링크 개수의 역수이고, 양방향일 경우 두 방향의 링크 개수 역수의 평균입니다.
+# undirected가 True이면 간선이 두 방향 모두 존재하는 경우만을 고려합니다.
 def dijkstra_shortest_path(start_title, target_title, undirected, progress_bar, status_text):
     """
     Finds the shortest path between two documents using Dijkstra's algorithm.
@@ -168,26 +180,24 @@ def dijkstra_shortest_path(start_title, target_title, undirected, progress_bar, 
     return None  # No path found
 
 
+# 제목 부분
 st.title("Graph Calculation App")
-
-# Section: Source Selection
 st.header("Select Source and Target")
 
+# 문서 입력 칸 부분
 source = st.text_input("출발 문서의 제목을 입력하세요:", "")
 target = st.text_input("도착 문서의 제목을 입력하세요:", "")
 
-# Section: Weighted Graph Option
+# Dijkstra/BFS, Directed/Undirected를 선택하는 체크박스 부분
 weighted = st.checkbox("Do you want to use weighted graph?", value=True)
-
-# Section: Directed Graph Option
 directed = st.checkbox("Do you want to use directed graph?", value=True)
 
-# Section: Execute Button
+# 계산 시작 버튼
 execute_button = st.button("Execute Calculation")
 
-# When button is pressed
+# 버튼이 눌리면 실행됩니다
 if execute_button:
-    # Validate text input if using text_input
+    # 입력 값 유효성 검사
     if source not in s_title_id:
         st.error("출발 문서가 존재하지 않습니다.")
     elif target not in s_title_id:
@@ -196,10 +206,11 @@ if execute_button:
         st.info(
             f"Starting calculation using {"Dijkstra" if weighted else "BFS"} with Source={source}, Target={target}, Directed={directed}")
 
-        # Initialize progress bar
+        # 프로그레스바 표시 부분
         progress_bar = st.progress(0)
         status_text = st.empty()
 
+        # 체크박스에 따라 알고리즘 선택
         algorithm = dijkstra_shortest_path if weighted else bfs_shortest_path
         result = algorithm(source, target, not directed,
                            progress_bar, status_text)
@@ -211,12 +222,12 @@ if execute_button:
             if weighted:
                 cost, path, weights = result
 
-                # Display Cost
+                # 전체 경로 길이 표시
                 st.markdown(f"**Total Cost:** `{cost:.2f}`")
 
-                # Display Path
+                # 경로 표시
                 st.markdown(f"**Path:**")
-                # Create a string like " node -(1.5)> node "
+                # " node --(1.5)>> node " 형식으로 표시
                 weighted_path_str = ""
                 for j in range(len(path) - 2):
                     weighted_path_str += f"{path[j]} --`({weights[j]:.2f})`>> "
@@ -224,10 +235,9 @@ if execute_button:
                 st.markdown(weighted_path_str)
             else:
                 st.write("Shortest path(s) found:")
-                # Iterate through each found path
+                # 발견한 경로를 모두 표시
                 for i, path in enumerate(result):
                     st.write(f"Path {i+1}:")
-                    # Use st.markdown with f-string and " -> " for better readability
                     st.markdown(" -> ".join(path))
         else:
             st.warning("No path found between the source and target documents.")
